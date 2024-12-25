@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Game {
+  id         Int          @id @default(autoincrement())
+  eventId    Int
+  ball_called  BallsCalled[]
+  start_time DateTime     @default(now())
+  end_time   DateTime
+  gameModes  GameOnMode[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+model GameMode {
+  id          Int          @id @default(autoincrement())
+  name        String
+  description String
+  games       GameOnMode[]
+  ruleId      GameRule[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model GameOnMode {
+  game       Game     @relation(fields: [gameId], references: [id])
+  gameId     Int
+  gameMode   GameMode @relation(fields: [gameModeId], references: [id])
+  gameModeId Int
+  assignedAt DateTime @default(now())
+  assignedBy String
+
+  @@id([gameId, gameModeId])
+}
+
+model GameRule {
+  id          Int      @id @default(autoincrement())
+  description String
+  rule        String[]
+  gameModeId  Int
+  gameMode    GameMode @relation(fields: [gameModeId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BallsCalled {
+  id          Int      @id @default(autoincrement())
+  game        Game @relation(fields: [gameId], references: [id])
+  gameId      Int
+  num         Int
+  colName     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
