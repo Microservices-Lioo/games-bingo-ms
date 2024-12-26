@@ -3,7 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { GameService } from './game.service';
 import { CreateGameDto } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
-import { CreateGameModeDto, UpdateGameModeDto } from './dto';
+import { CreateGameModeDto, FindRemoveDto, UpdateGameModeDto } from './dto';
 
 @Controller()
 export class GameController {
@@ -27,7 +27,7 @@ export class GameController {
 
   @MessagePattern('updateGame')
   update(@Payload() updateGameDto: UpdateGameDto) {
-    return this.gameService.update(updateGameDto.id, updateGameDto);
+    return this.gameService.update(updateGameDto);
   }
 
   @MessagePattern('removeGame')
@@ -65,5 +65,17 @@ export class GameController {
   @MessagePattern('removeMode')
   removeMode(@Payload() id: number) {
     return this.gameService.removeMode(id);
+  }
+
+  // TODO: GameOnMode
+
+  @MessagePattern('findOneGameOnMode')
+  findOneGameOnMode(@Payload() findRemoveDto: FindRemoveDto) {
+    return this.gameService.findOneGameOnMode(findRemoveDto);
+  }
+
+  @MessagePattern('removeGameOnMode')
+  removeGameOnMode(@Payload() findRemoveDto: FindRemoveDto) {
+    return this.gameService.removeGameOnMode(findRemoveDto);
   }
 }

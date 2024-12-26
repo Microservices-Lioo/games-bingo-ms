@@ -1,8 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { CreateGameDto } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
 import { PrismaClient } from '@prisma/client';
-import { CreateGameModeDto, UpdateGameModeDto } from './dto';
+import { CreateGameModeDto, FindRemoveDto, UpdateGameModeDto } from './dto';
 import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
@@ -13,27 +13,64 @@ export class GameService extends PrismaClient implements OnModuleInit {
   async onModuleInit() {
     await this.$connect();
   }
-  
+
 
   // TODO: Game
-  create(createGameDto: CreateGameDto) {
-    return 'This action adds a new game';
+  async create(createGameDto: CreateGameDto) {
+    const { gameModeId, assignedBy, ...createGame } = createGameDto;
+    const game = await this.game.create({
+      data: createGame
+    });
+
+    const gameOnMode = await this.gameOnMode.create({
+      data: {
+        gameId: game.id,
+        gameModeId: gameModeId,
+        assignedBy: assignedBy
+      }
+    });
+
+    return gameOnMode;
   }
 
-  findAll() {
-    return `This action returns all game`;
+  async findAll() {
+    return await this.game.findMany({});
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} game`;
+  async findOne(id: number) {
+    const game = await this.game.findUnique({
+      where: { id }
+    });
+
+    if (!game) throw new RpcException({
+      status: HttpStatus.NOT_FOUND,
+      message: `Game with id #${id} not found`
+    });
+
+    return game;
   }
 
-  update(id: number, updateGameDto: UpdateGameDto) {
-    return `This action updates a #${id} game`;
+  async update(updateGameDto: UpdateGameDto) {
+    const { id, ...data } = updateGameDto;
+
+    await this.findOne(id);
+
+    return await this.game.update({
+      where: {
+        id: id
+      },
+      data: {
+        start_time: data.start_time,
+      }
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} game`;
+  async remove(id: number) {
+    await this.findOne(id);
+
+    return await this.game.delete({
+      where: { id }
+    });
   }
 
   // TODO: GameMode
@@ -52,7 +89,7 @@ export class GameService extends PrismaClient implements OnModuleInit {
       where: { id }
     });
 
-    if ( !modes ) throw new RpcException(`Mode with id #${id} not found`);
+    if (!modes) throw new RpcException(`Mode with id #${id} not found`);
 
     return modes;
   }
@@ -64,13 +101,13 @@ export class GameService extends PrismaClient implements OnModuleInit {
       }
     });
 
-    if ( !modes ) throw new RpcException(`Mode with name: ${name} not found`);
+    if (!modes) throw new RpcException(`Mode with name: ${name} not found`);
 
     return modes;
   }
 
-  async updateMode(updateGameDto: UpdateGameModeDto) {
-    const { id, ...data } = updateGameDto;
+  async updateMode(updateModeDto: UpdateGameModeDto) {
+    const { id, ...data } = updateModeDto;
 
     await this.findOneMode(id);
 
@@ -87,6 +124,39 @@ export class GameService extends PrismaClient implements OnModuleInit {
 
     return await this.gameMode.delete({
       where: { id }
+    });
+  }
+
+  // TODO: GameOnMode
+  async findOneGameOnMode(findRemoveDto: FindRemoveDto) {
+    const { gameId, gameModeId } = findRemoveDto;
+    const game = await this.gameOnMode.findFirst({
+      where: {
+        gameId: gameId,
+        gameModeId: gameModeId
+      }
+    });
+
+    if (!game) throw new RpcException({
+      status: HttpStatus.NOT_FOUND,
+      message: `Game with id #${gameId} and Mode with #${gameModeId} not found`
+    });
+
+    return game;
+  }
+
+  async removeGameOnMode(findRemoveDto: FindRemoveDto) {
+    const { gameId, gameModeId } = findRemoveDto;
+    
+    await this.findOneGameOnMode(findRemoveDto);
+
+    return await this.gameOnMode.delete({
+      where: {
+        gameId_gameModeId: {
+          gameId: gameId,
+          gameModeId: gameModeId,
+        },
+      }
     });
   }
 
