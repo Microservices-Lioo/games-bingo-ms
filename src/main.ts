@@ -8,18 +8,29 @@ async function bootstrap() {
 
   const logger = new Logger('Game-Main');
 
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+  const appTcp = await NestFactory.createMicroservice<MicroserviceOptions>(
     AppModule,
-  {
-    transport: Transport.TCP,
-    options: {
-      host: 'localhost',
-      port: envs.PORT
+    {
+      transport: Transport.TCP,
+      options: {
+        host: 'localhost',
+        port: envs.PORT
+      }
     }
-  }
-);
+  );
 
-  app.useGlobalPipes(
+  const appRedis = await NestFactory.createMicroservice<MicroserviceOptions>(
+    AppModule,
+    {
+      transport: Transport.REDIS,
+      options: {
+        host: envs.REDIS_HOST,
+        port: envs.REDIS_PORT
+      }
+    }
+  )
+
+  appTcp.useGlobalPipes(
     new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,
@@ -27,7 +38,7 @@ async function bootstrap() {
   );
 
   logger.log('MS Game running on port ' + envs.PORT);
-  await app.listen();
+  await Promise.all([appTcp.listen(), appRedis.listen() ]);
 
 }
 bootstrap();
