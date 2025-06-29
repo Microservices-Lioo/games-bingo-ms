@@ -38,6 +38,21 @@ export class RuleService extends PrismaClient implements OnModuleInit {
     return rule;
   }
 
+  async findByGameMode(gameModeId: number) {
+    const rule = await this.gameRule.findUnique({
+      where: {
+        gameModeId: gameModeId
+      }
+    });
+
+    if ( !rule ) throw new RpcException({
+      status: HttpStatus.NOT_FOUND,
+      message: `Rule with game mode id #${gameModeId} not found`
+    });
+
+    return rule;
+  }
+
   async update(updateRuleDto: UpdateRuleDto) {
     const { id, ...data } = updateRuleDto;
 

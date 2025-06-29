@@ -25,6 +25,11 @@ export class GameController {
     return this.gameService.findOne(id);
   }
 
+  @MessagePattern('dataGame')
+  dataGame(@Payload('eventId') eventId: number) {
+    return this.gameService.dataGame(eventId);
+  }
+
   @MessagePattern('updateGame')
   update(@Payload() updateGameDto: UpdateGameDto) {
     return this.gameService.update(updateGameDto);

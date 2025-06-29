@@ -4,16 +4,20 @@ import { UpdateGameDto } from './dto/update-game.dto';
 import { PrismaClient } from '@prisma/client';
 import { CreateGameModeDto, FindRemoveDto, UpdateGameModeDto } from './dto';
 import { RpcException } from '@nestjs/microservices';
+import { RuleService } from 'src/rule/rule.service';
 
 @Injectable()
 export class GameService extends PrismaClient implements OnModuleInit {
 
   private readonly logger = new Logger('Game-Service');
 
+  constructor(
+    private ruleServ: RuleService
+  ) { super(); }
+
   async onModuleInit() {
     await this.$connect();
   }
-
 
   // TODO: Game
   async create(createGameDto: CreateGameDto) {
@@ -48,6 +52,38 @@ export class GameService extends PrismaClient implements OnModuleInit {
     });
 
     return game;
+  }
+
+  async dataGame(eventId: number) {
+    const game = await this.game.findFirst({
+      where: {
+        eventId: eventId
+      }
+    });
+
+    if (!game) {
+      return null;
+    }
+
+    //* Game on mode
+    const gameOnMode = await this.findIsActiveByGame(game.id);
+
+    if (!gameOnMode) {
+      return null;
+    }
+
+    //* GameMode
+    const gameMode = await this.findOneMode(gameOnMode.gameModeId);
+
+    //* Game Rule
+    const gameRule = await this.ruleServ.findByGameMode(gameOnMode.gameModeId);
+    
+    return { 
+      game,
+      gameOnMode,
+      gameMode,
+      gameRule
+    };
   }
 
   async update(updateGameDto: UpdateGameDto) {
@@ -128,6 +164,17 @@ export class GameService extends PrismaClient implements OnModuleInit {
   }
 
   // TODO: GameOnMode
+  async findIsActiveByGame(gameId: number) {
+    const gameOnMode = await this.gameOnMode.findFirst({
+      where: {
+        gameId: gameId,
+        is_active: true,
+      }
+    });
+
+    return gameOnMode;
+  }
+  
   async findOneGameOnMode(findRemoveDto: FindRemoveDto) {
     const { gameId, gameModeId } = findRemoveDto;
     const game = await this.gameOnMode.findFirst({
