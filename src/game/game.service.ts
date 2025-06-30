@@ -2,9 +2,10 @@ import { HttpStatus, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { CreateGameDto } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
 import { PrismaClient } from '@prisma/client';
-import { CreateGameModeDto, FindRemoveDto, UpdateGameModeDto } from './dto';
+import { CreateGameModeDto, CreateGameWithModeDto, FindRemoveDto, UpdateGameModeDto } from './dto';
 import { RpcException } from '@nestjs/microservices';
 import { RuleService } from 'src/rule/rule.service';
+import { GameEntity, GameModeEntity, GameOnModeEntity, GameRuleEntity } from './entities';
 
 @Injectable()
 export class GameService extends PrismaClient implements OnModuleInit {
@@ -21,20 +22,75 @@ export class GameService extends PrismaClient implements OnModuleInit {
 
   // TODO: Game
   async create(createGameDto: CreateGameDto) {
-    const { gameModeId, assignedBy, ...createGame } = createGameDto;
     const game = await this.game.create({
-      data: createGame
+      data: createGameDto
     });
 
-    const gameOnMode = await this.gameOnMode.create({
-      data: {
-        gameId: game.id,
-        gameModeId: gameModeId,
-        assignedBy: assignedBy
+    return game;
+  }
+
+  async createGameWithMode(payload: CreateGameWithModeDto) {
+    const { eventId, gameModeId, assignedBy } = payload;
+    const gameIds = await this.findByEvent(eventId);
+
+    if (gameIds.length === 0) {
+      const game = await this.create({ eventId });
+
+      const gameOnMode = await this.createGameOnMode(game.id, assignedBy, gameModeId);
+
+      const gameMode = await this.findOneMode(gameModeId);
+
+      const gameRule = await this.ruleServ.findByGameMode(gameOnMode.gameModeId);
+
+      return {
+        game,
+        gameOnMode,
+        gameMode,
+        gameRule
       }
-    });
+    } else {
+      let gameOnMode: GameOnModeEntity | null = null;
+      for (const game of gameIds) {
+        const { id } = game;
+        const isActive = await this.findIsActiveByGame(id);
 
-    return gameOnMode;
+        if (isActive) {
+          gameOnMode = isActive;
+          break;
+        }
+      }
+
+      if (!gameOnMode) {
+        const game = await this.create({ eventId });
+
+        const gameOnMode = await this.createGameOnMode(game.id, assignedBy, gameModeId);
+
+        const gameMode = await this.findOneMode(gameModeId);
+
+        const gameRule = await this.ruleServ.findByGameMode(gameOnMode.gameModeId);
+
+        return {
+          game,
+          gameOnMode,
+          gameMode,
+          gameRule
+        }
+      } else {
+        const game: GameEntity = await this.findOne(gameOnMode.gameId);
+  
+        const gameMode: GameModeEntity = await this.findOneMode(gameOnMode.gameModeId);
+        
+        const gameRule = await this.ruleServ.findByGameMode(gameOnMode.gameModeId);
+        
+        return {
+          game,
+          gameOnMode,
+          gameMode,
+          gameRule
+        }
+      }
+    }
+
   }
 
   async findAll() {
@@ -51,6 +107,16 @@ export class GameService extends PrismaClient implements OnModuleInit {
       message: `Game with id #${id} not found`
     });
 
+    return game;
+  }
+
+  async findByEvent(eventId: number) {
+    const game = await this.game.findMany({
+      where: { eventId: eventId },
+      select: {
+        id: true
+      }
+    });
     return game;
   }
 
@@ -164,6 +230,19 @@ export class GameService extends PrismaClient implements OnModuleInit {
   }
 
   // TODO: GameOnMode
+  async createGameOnMode(gameId: number, assignedBy: string, gameModeId: number) {
+    const gameOnMode = await this.gameOnMode.create({
+      data: {
+        gameId: gameId,
+        gameModeId: gameModeId,
+        is_active: true,
+        assignedBy: assignedBy
+      }
+    });
+
+    return gameOnMode;
+  }
+
   async findIsActiveByGame(gameId: number) {
     const gameOnMode = await this.gameOnMode.findFirst({
       where: {

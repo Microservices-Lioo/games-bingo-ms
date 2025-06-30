@@ -1,16 +1,9 @@
-import { IsDate, IsEmpty, IsNotEmpty, IsNumber, IsString } from "class-validator"
+import { IsDate, IsEmpty, IsNotEmpty, IsNumber, IsPositive, IsString } from "class-validator"
 
 export class CreateGameDto {
 
     @IsNumber()
+    @IsPositive()
     @IsNotEmpty()
     eventId: number;
-    
-    @IsNumber()
-    @IsNotEmpty()
-    gameModeId: number;
-
-    @IsString()
-    @IsNotEmpty()
-    assignedBy: string;
 }

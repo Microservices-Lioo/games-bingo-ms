@@ -1,18 +1,19 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { GameService } from './game.service';
-import { CreateGameDto } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
-import { CreateGameModeDto, FindRemoveDto, UpdateGameModeDto } from './dto';
+import { CreateGameModeDto, CreateGameWithModeDto, FindRemoveDto, UpdateGameModeDto } from './dto';
 
 @Controller()
 export class GameController {
   constructor(private readonly gameService: GameService) {}
 
   // TODO: Game
-  @MessagePattern('createGame')
-  create(@Payload() createGameDto: CreateGameDto) {
-    return this.gameService.create(createGameDto);
+  @MessagePattern('createGameWithMode')
+  createGameWithMode(
+    @Payload() payload: CreateGameWithModeDto
+  ) {
+    return this.gameService.createGameWithMode(payload);
   }
 
   @MessagePattern('findAllGame')
