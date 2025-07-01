@@ -6,14 +6,21 @@ import { CreateGameModeDto, CreateGameWithModeDto, FindRemoveDto, UpdateGameMode
 import { RpcException } from '@nestjs/microservices';
 import { RuleService } from 'src/rule/rule.service';
 import { GameEntity, GameModeEntity, GameOnModeEntity, GameRuleEntity } from './entities';
+import { RedisService } from 'src/redis/redis.service';
+import { RedisKeys } from 'src/common/const';
 
 @Injectable()
 export class GameService extends PrismaClient implements OnModuleInit {
 
   private readonly logger = new Logger('Game-Service');
-
+  CACHE_TTL = 30 * 60;
+  private static readonly SEPARATORS = {
+    MAIN: ':',
+  } as const;
+  
   constructor(
-    private ruleServ: RuleService
+    private ruleServ: RuleService,
+    private redisServ: RedisService
   ) { super(); }
 
   async onModuleInit() {
@@ -25,6 +32,9 @@ export class GameService extends PrismaClient implements OnModuleInit {
     const game = await this.game.create({
       data: createGameDto
     });
+
+    const keyGame = RedisKeys.GAME_ID(game.id);
+    await this.redisServ.set(keyGame, game, this.CACHE_TTL);
 
     return game;
   }
@@ -98,26 +108,39 @@ export class GameService extends PrismaClient implements OnModuleInit {
   }
 
   async findOne(id: number) {
+    const keyGame = RedisKeys.GAME_ID(id);
+    
+    await this.getRedis(keyGame);
+
     const game = await this.game.findUnique({
       where: { id }
     });
-
+    
     if (!game) throw new RpcException({
       status: HttpStatus.NOT_FOUND,
       message: `Game with id #${id} not found`
     });
+    
+    await this.redisServ.set(keyGame, game, this.CACHE_TTL);
 
     return game;
   }
 
   async findByEvent(eventId: number) {
-    const game = await this.game.findMany({
+    const keyGameEvent = RedisKeys.GAME_EVENT(eventId);
+    
+    await this.getRedis(keyGameEvent);
+
+    const gameIds = await this.game.findMany({
       where: { eventId: eventId },
       select: {
         id: true
       }
     });
-    return game;
+
+    await this.redisServ.set(keyGameEvent, gameIds, this.CACHE_TTL);
+
+    return gameIds;
   }
 
   async dataGame(eventId: number) {
@@ -154,10 +177,15 @@ export class GameService extends PrismaClient implements OnModuleInit {
 
   async update(updateGameDto: UpdateGameDto) {
     const { id, ...data } = updateGameDto;
+    const keyGame = RedisKeys.GAME_ID(id);
 
-    await this.findOne(id);
+    const cachedGame = await this.redisServ.get(keyGame);
 
-    return await this.game.update({
+    if ( !cachedGame ) {
+      await this.findOne(id);
+    }
+
+    const game = await this.game.update({
       where: {
         id: id
       },
@@ -165,68 +193,122 @@ export class GameService extends PrismaClient implements OnModuleInit {
         start_time: data.start_time,
       }
     });
+
+    await this.redisServ.set(keyGame, game, this.CACHE_TTL);
+    await this.invalidateCachedGame(game.eventId);
+
+    return game;
   }
 
   async remove(id: number) {
-    await this.findOne(id);
+    const keyGame = RedisKeys.GAME_ID(id);
+    const cachedGame = await this.redisServ.get(keyGame);
 
-    return await this.game.delete({
+    if ( !cachedGame ) {
+      await this.findOne(id);
+    }
+
+    await this.redisServ.delete(keyGame);
+
+    const game = await this.game.delete({
       where: { id }
     });
+
+    await this.invalidateCachedGame(game.eventId);
+
+    return game;
+  }
+
+  async invalidateCachedGame(eventId: number) {
+    const keyGameEvent = RedisKeys.GAME_EVENT(eventId);
+    this.redisServ.delete(keyGameEvent);
   }
 
   // TODO: GameMode
   async createMode(createGameModeDto: CreateGameModeDto) {
-    return await this.gameMode.create({
+    const gameMode = await this.gameMode.create({
       data: createGameModeDto
     });
+
+    const keyGameMode = RedisKeys.GAME_MODE_ID(gameMode.id);
+    await this.redisServ.set(keyGameMode, gameMode, this.CACHE_TTL);
+
+    return gameMode;
   }
 
   async findAllMode() {
-    return await this.gameMode.findMany({});
+    const keyGameModeAll = RedisKeys.GAME_MODE_ALL;
+    
+    await this.getRedis(keyGameModeAll);
+
+    const gameModeAll = await this.gameMode.findMany({});
+
+    await this.redisServ.set(keyGameModeAll, gameModeAll, this.CACHE_TTL);
+
+    return gameModeAll;
   }
 
   async findOneMode(id: number) {
-    const modes = await this.gameMode.findUnique({
+    const keyGameMode = RedisKeys.GAME_MODE_ID(id);
+
+    await this.getRedis(keyGameMode);
+
+    const gameMode = await this.gameMode.findUnique({
       where: { id }
     });
 
-    if (!modes) throw new RpcException(`Mode with id #${id} not found`);
+    if (!gameMode) throw new RpcException(`Mode with id #${id} not found`);
 
-    return modes;
+    await this.redisServ.set(keyGameMode, gameMode, this.CACHE_TTL);
+
+    return gameMode;
   }
 
   async findOneModeForName(name: string) {
-    const modes = await this.gameMode.findFirst({
+    const mode = await this.gameMode.findFirst({
       where: {
         name: name
       }
     });
 
-    if (!modes) throw new RpcException(`Mode with name: ${name} not found`);
+    if (!mode) throw new RpcException(`Mode with name: ${name} not found`);
 
-    return modes;
+    return mode;
   }
 
   async updateMode(updateModeDto: UpdateGameModeDto) {
     const { id, ...data } = updateModeDto;
+    const keyGameMode = RedisKeys.GAME_MODE_ID(id);
 
     await this.findOneMode(id);
 
-    return await this.gameMode.update({
+    const gameMode = await this.gameMode.update({
       where: {
         id: id
       },
       data: data
     });
+
+    await this.redisServ.set(keyGameMode, gameMode, this.CACHE_TTL);
+    await this.invalidateCachedGameMode();
+
+    return gameMode;
   }
 
   async removeMode(id: number) {
+    const keyGameMode = RedisKeys.GAME_MODE_ID(id);
     await this.findOneMode(id);
+
+    await this.redisServ.delete(keyGameMode);
 
     return await this.gameMode.delete({
       where: { id }
     });
+  }
+
+  async invalidateCachedGameMode() {
+    const keyGameModeAll = RedisKeys.GAME_MODE_ALL;
+    this.redisServ.delete(keyGameModeAll);
   }
 
   // TODO: GameOnMode
@@ -239,6 +321,10 @@ export class GameService extends PrismaClient implements OnModuleInit {
         assignedBy: assignedBy
       }
     });
+
+    const keyGameOnMode = RedisKeys.GAME_ON_MODE_ID(gameOnMode.gameId, gameOnMode.gameModeId);
+
+    await this.redisServ.set(keyGameOnMode, gameOnMode, this.CACHE_TTL);
 
     return gameOnMode;
   }
@@ -256,25 +342,34 @@ export class GameService extends PrismaClient implements OnModuleInit {
   
   async findOneGameOnMode(findRemoveDto: FindRemoveDto) {
     const { gameId, gameModeId } = findRemoveDto;
-    const game = await this.gameOnMode.findFirst({
+    const keyGameOnMode = RedisKeys.GAME_ON_MODE_ID(gameId, gameModeId);
+    
+    await this.getRedis(keyGameOnMode);
+
+    const gameOnMode = await this.gameOnMode.findFirst({
       where: {
         gameId: gameId,
         gameModeId: gameModeId
       }
     });
 
-    if (!game) throw new RpcException({
+    if (!gameOnMode) throw new RpcException({
       status: HttpStatus.NOT_FOUND,
       message: `Game with id #${gameId} and Mode with #${gameModeId} not found`
     });
 
-    return game;
+    await this.redisServ.set(keyGameOnMode, gameOnMode, this.CACHE_TTL);
+
+    return gameOnMode;
   }
 
   async removeGameOnMode(findRemoveDto: FindRemoveDto) {
     const { gameId, gameModeId } = findRemoveDto;
+    const keyGameOnMode = RedisKeys.GAME_ON_MODE_ID(gameId, gameModeId);
     
     await this.findOneGameOnMode(findRemoveDto);
+    
+    await this.redisServ.delete(keyGameOnMode);
 
     return await this.gameOnMode.delete({
       where: {
@@ -286,4 +381,12 @@ export class GameService extends PrismaClient implements OnModuleInit {
     });
   }
 
+  //TODO: REDIS
+  async getRedis(key: string) {
+    const cachedGame = await this.redisServ.get(key);
+
+    if (cachedGame) {
+      return JSON.parse(cachedGame);
+    }
+  }
 }

@@ -27,7 +27,7 @@ export class GameController {
   }
 
   @MessagePattern('dataGame')
-  dataGame(@Payload('eventId') eventId: number) {
+  dataGame(@Payload() eventId: number) {
     return this.gameService.dataGame(eventId);
   }
 
@@ -64,7 +64,6 @@ export class GameController {
 
   @MessagePattern('updateMode')
   updateMode(@Payload() updateModeDto: UpdateGameModeDto) {
-    console.log(updateModeDto);
     return this.gameService.updateMode(updateModeDto);
   }
 
