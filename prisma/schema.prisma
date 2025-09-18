@@ -7,57 +7,82 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Game {
-  id          Int           @id @default(autoincrement())
-  eventId     Int
-  start_time  DateTime      @default(now())
+model Room {
+  id          String     @id @default(uuid())
+  eventId     String
+  status      Status
+  status_host StatusHost
+  start_time  DateTime
   end_time    DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  ball_called BallsCalled[]
-  gameModes   GameOnMode[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  Game        Game[]
 }
 
-model GameMode {
-  id          Int          @id @default(autoincrement())
+model Game {
+  id              String        @id @default(uuid())
+  roomId          String
+  modeId          String
+  numberHistoryId String
+  start_time      DateTime      @default(now())
+  end_time        DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  room            Room          @relation(fields: [roomId], references: [id])
+  mode            Mode          @relation(fields: [modeId], references: [id])
+  numberhistory   NumberHistory @relation(fields: [numberHistoryId], references: [id])
+}
+
+model Mode {
+  id          String   @id @default(uuid())
   name        String
   description String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  games       GameOnMode[]
-  rule        GameRule?
+  ruleId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  rule        Rule     @relation(fields: [ruleId], references: [id])
+  Game        Game[]
 }
 
-model GameOnMode {
-  gameId     Int
-  gameModeId Int
-  assignedAt DateTime  @default(now())
-  assignedBy String
-  end_time   DateTime?
-  is_active  Boolean   @default(false)
-  start_time DateTime  @default(now())
-  game       Game      @relation(fields: [gameId], references: [id])
-  gameMode   GameMode  @relation(fields: [gameModeId], references: [id])
-
-  @@id([gameId, gameModeId])
-}
-
-model GameRule {
-  id          Int      @id @default(autoincrement())
+model Rule {
+  id          String   @id @default(uuid())
+  name        String
   description String
   rule        String[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  gameModeId  Int      @unique
-  gameMode    GameMode @relation(fields: [gameModeId], references: [id])
+  Mode        Mode[]
 }
 
-model BallsCalled {
-  id        Int      @id @default(autoincrement())
-  gameId    Int
-  num       Int
-  colName   String
+model NumberHistory {
+  id        String   @id @default(uuid())
+  nums      Int[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  game      Game     @relation(fields: [gameId], references: [id])
+  Game      Game[]
+}
+
+model Members {
+  userId String
+  roomId String
+  role  Role  @default(PLAYER)
+  @@id([userId, roomId])
+}
+
+enum Status {
+  NOT_STARTED
+  STARTED
+  FINISHED
+  CANCELED
+}
+
+enum StatusHost {
+  ONLINE
+  OFFLINE
+}
+
+enum Role {
+  HOST
+  PLAYER
+  SPECTATOR
 }
