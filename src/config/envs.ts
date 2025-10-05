@@ -10,6 +10,7 @@ interface EnvVars {
     REDIS_HOST: string;
     REDIS_PORT: number;
     NATS_SERVERS: string[];
+    MAX_NUMBER_BINGO: number;
 }
 
 const envsSchema = joi.object({
@@ -21,6 +22,7 @@ const envsSchema = joi.object({
     REDIS_HOST: joi.string().required(),
     REDIS_PORT: joi.string().required(),
     NATS_SERVERS: joi.array().items( joi.string() ).required(),
+    MAX_NUMBER_BINGO: joi.number().required(),
 })
 .unknown(true);
 
@@ -43,5 +45,6 @@ export const envs: EnvVars = {
     POSTGRES_DB: envVars.POSTGRES_DB,
     REDIS_HOST: envVars.REDIS_HOST,
     REDIS_PORT: envVars.REDIS_PORT,
-    NATS_SERVERS: envVars.NATS_SERVERS
+    NATS_SERVERS: envVars.NATS_SERVERS,
+    MAX_NUMBER_BINGO: envVars.MAX_NUMBER_BINGO,
 }

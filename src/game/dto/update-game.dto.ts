@@ -1,13 +1,23 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateGameDto } from './create-game.dto';
-import { IsDate, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
+import { IsDate, IsOptional, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdateGameDto extends PartialType(CreateGameDto) {
-  @IsNumber()
-  @IsNotEmpty()
-  id: number;
+  @IsUUID()
+  id: string;
 
+  @Type(() => Date)
   @IsDate()
   @IsOptional()
-  start_time: Date;
+  start_time?: Date;
+
+  @Type(() => Date)
+  @IsDate()
+  @IsOptional()
+  end_time?: Date;
+
+  @IsUUID()
+  @IsOptional()
+  numberHistoryId?: string;
 }

@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
 import { GameService } from './game.service';
 import { GameController } from './game.controller';
-import { RuleModule } from 'src/rule/rule.module';
-import { RedisModule } from 'src/redis/redis.module';
+import { NatsModule } from 'src/transport/nats.module';
 
 @Module({
-  imports: [RuleModule, RedisModule],
+  imports: [NatsModule],
   controllers: [GameController],
   providers: [GameService],
 })

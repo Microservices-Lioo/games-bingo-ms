@@ -20,38 +20,27 @@ model Room {
 }
 
 model Game {
-  id              String        @id @default(uuid())
+  id              String         @id @default(uuid())
   roomId          String
   modeId          String
-  numberHistoryId String
-  start_time      DateTime      @default(now())
+  numberHistoryId String?
+  start_time      DateTime       @default(now())
   end_time        DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  room            Room          @relation(fields: [roomId], references: [id])
-  mode            Mode          @relation(fields: [modeId], references: [id])
-  numberhistory   NumberHistory @relation(fields: [numberHistoryId], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  room            Room           @relation(fields: [roomId], references: [id])
+  mode            Mode           @relation(fields: [modeId], references: [id])
+  numberhistory   NumberHistory? @relation(fields: [numberHistoryId], references: [id])
 }
 
 model Mode {
   id          String   @id @default(uuid())
   name        String
   description String
-  ruleId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  rule        Rule     @relation(fields: [ruleId], references: [id])
-  Game        Game[]
-}
-
-model Rule {
-  id          String   @id @default(uuid())
-  name        String
-  description String
   rule        String[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  Mode        Mode[]
+  Game        Game[]
 }
 
 model NumberHistory {
@@ -65,7 +54,8 @@ model NumberHistory {
 model Members {
   userId String
   roomId String
-  role  Role  @default(PLAYER)
+  role   Role   @default(PLAYER)
+
   @@id([userId, roomId])
 }
 

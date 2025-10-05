@@ -59,4 +59,41 @@ export class RoomService extends PrismaClient implements OnModuleInit {
             });
         }
     }
+
+    async findOneEventByIdRoom(eventId: string) {
+        const room = await this.room.findFirst({
+            where: { eventId: eventId }
+        });
+
+        if (!room) {
+            throw new RpcException({
+                status: HttpStatus.NOT_FOUND,
+                message: 'No se encontro una sala para ese evento'
+            });
+        }
+        return room;
+    }
+
+    async findRoleMemberRoom(roomId: string, userId: string) {
+        const member = await this.members.findFirst({
+            where: { roomId, userId }
+        });
+
+        if (!member) {
+            throw new RpcException({
+                status: HttpStatus.NOT_FOUND,
+                message: 'El usuario no participa en la sala'
+            });
+        }
+
+        return member;
+    }
+
+    async updateStatusHost(roomId: string, status: StatusHost) {
+        const room = await this.room.update({
+            where: { id: roomId },
+            data: { status_host:  status }
+        });
+        return room;
+    }
 }

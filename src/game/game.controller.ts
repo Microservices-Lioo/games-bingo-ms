@@ -1,86 +1,38 @@
-import { Controller } from '@nestjs/common';
+import { Controller, ParseUUIDPipe } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { GameService } from './game.service';
-import { UpdateGameDto } from './dto/update-game.dto';
-import { CreateGameModeDto, CreateGameWithModeDto, FindRemoveDto, UpdateGameModeDto } from './dto';
+import { CreateGameDto, UpdateGameDto } from './dto';
 
 @Controller()
 export class GameController {
-  constructor(private readonly gameService: GameService) {}
+  
+  constructor(private readonly gameServ: GameService) {}
 
-  // TODO: Game
-  @MessagePattern('createGameWithMode')
-  createGameWithMode(
-    @Payload() payload: CreateGameWithModeDto
+  //* Obtener el ultimo juego activo de una sala
+  @MessagePattern('findGameToRoom')
+  findGameToRoom(@Payload('roomId', ParseUUIDPipe) roomId: string) {
+    return this.gameServ.findGameToRoom(roomId);
+  }
+
+  //* Crear un juego
+  @MessagePattern('createGame')
+  create(@Payload() createDto: CreateGameDto) {
+    return this.gameServ.create(createDto);
+  }
+
+  //* Obtener el historial de números de un juego
+  @MessagePattern('getNumsGame')
+  getNums(
+    @Payload('roomId', ParseUUIDPipe) roomId: string,
+    @Payload('gameId', ParseUUIDPipe) gameId: string,
   ) {
-    return this.gameService.createGameWithMode(payload);
+    return this.gameServ.getNums(roomId, gameId);
   }
 
-  @MessagePattern('findAllGame')
-  findAll() {
-    return this.gameService.findAll();
-  }
-
-  @MessagePattern('findOneGame')
-  findOne(@Payload() id: number) {
-    return this.gameService.findOne(id);
-  }
-
-  @MessagePattern('dataGame')
-  dataGame(@Payload() eventId: number) {
-    return this.gameService.dataGame(eventId);
-  }
-
+  //* Actualizar un juego
   @MessagePattern('updateGame')
   update(@Payload() updateGameDto: UpdateGameDto) {
-    return this.gameService.update(updateGameDto);
+    return this.gameServ.update(updateGameDto);
   }
 
-  @MessagePattern('removeGame')
-  remove(@Payload() id: number) {
-    return this.gameService.remove(id);
-  }
-
-  // TODO: GameMode
-  @MessagePattern('createMode')
-  createMode(@Payload() createModeDto: CreateGameModeDto) {
-    return this.gameService.createMode(createModeDto);
-  }
-
-  @MessagePattern('findAllMode')
-  findAllMode() {
-    return this.gameService.findAllMode();
-  }
-
-  @MessagePattern('findOneMode')
-  findOneMode(@Payload() id: number) {
-    return this.gameService.findOneMode(id);
-  }
-
-  @MessagePattern('findOneModeForName')
-  findOneModeForName(@Payload() name: string) {
-    return this.gameService.findOneModeForName(name);
-  }
-
-  @MessagePattern('updateMode')
-  updateMode(@Payload() updateModeDto: UpdateGameModeDto) {
-    return this.gameService.updateMode(updateModeDto);
-  }
-
-  @MessagePattern('removeMode')
-  removeMode(@Payload() id: number) {
-    return this.gameService.removeMode(id);
-  }
-
-  // TODO: GameOnMode
-
-  @MessagePattern('findOneGameOnMode')
-  findOneGameOnMode(@Payload() findRemoveDto: FindRemoveDto) {
-    return this.gameService.findOneGameOnMode(findRemoveDto);
-  }
-
-  @MessagePattern('removeGameOnMode')
-  removeGameOnMode(@Payload() findRemoveDto: FindRemoveDto) {
-    return this.gameService.removeGameOnMode(findRemoveDto);
-  }
 }
