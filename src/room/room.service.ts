@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { CreateDto } from './dtos';
+import { CreateDto, UpdateDto } from './dtos';
 import { PrismaClient, Status, StatusHost } from '@prisma/client';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { NATS_SERVICE } from 'src/config';
@@ -94,6 +94,17 @@ export class RoomService extends PrismaClient implements OnModuleInit {
             where: { id: roomId },
             data: { status_host:  status }
         });
+        return room;
+    }
+
+    async update(updateDto: UpdateDto) {
+        const { id, ...data } = updateDto;
+
+        const room = await this.room.update({
+            where: { id },
+            data: data
+        });
+
         return room;
     }
 }

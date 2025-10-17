@@ -1,0 +1,6 @@
+export enum EStatus {
+    STARTED = 'STARTED',
+    NOT_STARTED = 'NOT_STARTED',
+    FINISHED = 'FINISHED',
+    CANCELED = 'CANCELED',
+}

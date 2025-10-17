@@ -1,6 +1,6 @@
 import { Controller, ParseUUIDPipe } from '@nestjs/common';
 import { RoomService } from './room.service';
-import { CreateDto } from './dtos';
+import { CreateDto, UpdateDto } from './dtos';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { EStatusHost } from './enums';
 
@@ -38,5 +38,10 @@ export class RoomController {
     @Payload('status') status: EStatusHost,
   ) {
     return this.roomService.updateStatusHost(roomId, status);
+  }
+
+  @MessagePattern('updateRoom')
+  update(@Payload() updateDto: UpdateDto) {
+    return this.roomService.update(updateDto);
   }
 }

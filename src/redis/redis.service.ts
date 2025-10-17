@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
 import { envs } from 'src/config';
-import { JoinDto } from './dtos';
+import { JoinDto, RouletteWinnerDto } from './dtos';
 import { EStatusTableBingo, HostActivity } from './enums';
 import { ITableBingo } from './interfaces';
 
@@ -232,12 +232,28 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    async set(key: string, otp: Object, ttInSeconds?: number): Promise<void> {
+    async get(key: string) {
+        try {
+            const data = await this.client.get(key);
+            if (!data) return null;
+
+            return JSON.parse(data);
+        } catch (error) {
+            this.logger.error(error);
+            return null;
+        }
+    }
+
+    async set(key: string, otp: any, ttInSeconds?: number) {
         const data = JSON.stringify(otp);
         if (ttInSeconds) {
-            await this.client.set(key, data, 'EX', ttInSeconds);
+            const result = await this.client.set(key, data, 'EX', ttInSeconds);
+            if (!result) return null;
+            return result;
         } else {
-            await this.client.set(key, data);
+            const result = await this.client.set(key, data);
+            if (!result) return null;
+            return result;
         }
     }
 }

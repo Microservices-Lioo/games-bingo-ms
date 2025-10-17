@@ -1,7 +1,7 @@
 import { Controller, ParseIntPipe, ParseUUIDPipe } from '@nestjs/common';
 import { RedisService } from './redis.service';
 import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
-import { JoinDto } from './dtos';
+import { JoinDto, RouletteWinnerDto } from './dtos';
 import { EStatusTableBingo, HostActivity } from './enums';
 
 @Controller('redis')
@@ -72,11 +72,24 @@ export class RedisController {
 
         // Actividad del host
         const hostActivity = await this.getHostActivity(roomId);
+
+        // Obtener el estado de la premiación
+        const awardStatus = await this.redisServ.get(`rooms:${roomId}:awardStatus`);
+
+        // Obtener el estado de la ruleta
+        const rouletteStatus = await this.redisServ.get(`rooms:${roomId}:rouletteStatus`);
+
+        // Obtener al ganador de la ruleta
+        const rouletteWinner = await this.redisServ.get(`rooms:${roomId}:rouletteWinner`);
+ 
         return {
             statusCount,
             countUser,
             tableWinners,
-            hostActivity
+            hostActivity,
+            awardStatus,
+            rouletteStatus,
+            rouletteWinner,
         }
     }
 
@@ -111,5 +124,35 @@ export class RedisController {
         @Payload('status') status: string,
     ) {
         return this.redisServ.updateHostActivity(roomId, status as HostActivity);
+    }
+
+    //* Actualizar el estado de la ruleta de premiación
+    @EventPattern('updateAwardStatusRoom')
+    updateAwardStatus(
+        @Payload('roomId', ParseUUIDPipe) roomId: string,
+        @Payload('status') status: string,
+    ) {
+        const key = `rooms:${roomId}:awardStatus`;
+        return this.redisServ.set(key, status);
+    }
+
+    //* Actualizar la posicion del ganador en la ruleta
+    @EventPattern('updateRouletteStatusRoom')
+    updateRouletteStatus(
+        @Payload('roomId', ParseUUIDPipe) roomId: string,
+        @Payload('status') status: string,
+    ) {
+        const key = `rooms:${roomId}:rouletteStatus`;
+        return this.redisServ.set(key, status);
+    }
+
+    //* Actualizar la posición del ganador en la ruleta a
+    @EventPattern('updateRouletteWinnerRoom')
+    updateRouletteWinner(
+        @Payload('roomId', ParseUUIDPipe) roomId: string,
+        @Payload('data') data: RouletteWinnerDto,
+    ) {
+        const key = `rooms:${roomId}:rouletteWinner`;
+        return this.redisServ.set(key, data);
     }
 }

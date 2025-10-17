@@ -1,1 +1,2 @@
-export * from './create.interface';
+export * from './create.dto';
+export * from './update.dto';
