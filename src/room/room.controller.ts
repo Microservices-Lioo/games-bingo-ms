@@ -40,8 +40,16 @@ export class RoomController {
     return this.roomService.updateStatusHost(roomId, status);
   }
 
+  //* Actualizar una sala
   @MessagePattern('updateRoom')
   update(@Payload() updateDto: UpdateDto) {
     return this.roomService.update(updateDto);
+  }
+
+  //* Obtener una sala por su id
+  //* Obtener una sala por un eventId
+  @MessagePattern('findOneRoom')
+  findOne(@Payload('id', ParseUUIDPipe) roomId: string) {
+    return this.roomService.findOne(roomId);
   }
 }
